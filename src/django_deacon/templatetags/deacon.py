@@ -32,14 +32,16 @@ def deacon_widget(context):
         return ""
 
     deacon_context = getattr(settings, "DEACON_CONTEXT", None)
+    page_views = getattr(settings, "DEACON_PAGE_VIEWS", True)
     check_context(deacon_context)
+    check_page_views(page_views)
 
     attributes = {"data-key": key}
     if deacon_context is not None:
         attributes["data-context"] = json.dumps(
             deacon_context, separators=(",", ":"), ensure_ascii=False
         )
-    if getattr(settings, "DEACON_PAGE_VIEWS", True) is False:
+    if page_views is False:
         attributes["data-no-page-views"] = True
 
     return loader_tag(attributes)
@@ -56,6 +58,13 @@ def check_context(deacon_context):
         raise ImproperlyConfigured(
             "django-deacon: the DEACON_CONTEXT setting must be a dict whose values are strings, "
             "numbers or booleans."
+        )
+
+
+def check_page_views(page_views):
+    if not isinstance(page_views, bool):
+        raise ImproperlyConfigured(
+            "django-deacon: the DEACON_PAGE_VIEWS setting must be True or False."
         )
 
 

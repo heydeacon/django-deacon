@@ -123,3 +123,13 @@ def test_holds_back_page_views_with_the_data_no_page_views_attribute(settings, r
         '<script src="https://heydeacon.com/widget/v1/loader.js" data-key="pk_test123" '
         "data-no-page-views async></script>"
     )
+
+
+def test_refuses_a_page_views_setting_that_is_not_true_or_false(settings, rf):
+    settings.DEACON_KEY = "pk_test123"
+    settings.DEACON_PAGE_VIEWS = "false"
+
+    with pytest.raises(ImproperlyConfigured) as refused:
+        render_widget(rf.get("/"))
+
+    assert str(refused.value) == "django-deacon: the DEACON_PAGE_VIEWS setting must be True or False."
