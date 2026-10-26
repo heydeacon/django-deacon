@@ -14,3 +14,12 @@ def test_prints_the_tag_from_install_with_the_key_from_the_deacon_key_setting(se
         '<script src="https://heydeacon.com/widget/v1/loader.js" data-key="pk_test123" async>'
         "</script>"
     )
+
+
+def test_trims_spaces_pasted_around_the_key(settings, rf):
+    settings.DEACON_KEY = "  pk_test123\n"
+
+    assert render_widget(rf.get("/")) == (
+        '<script src="https://heydeacon.com/widget/v1/loader.js" data-key="pk_test123" async>'
+        "</script>"
+    )
