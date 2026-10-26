@@ -1,9 +1,12 @@
 import logging
+import re
 from html.parser import HTMLParser
 
+import django
 import pytest
 from django.core.exceptions import ImproperlyConfigured
-from django.template import Context, Template
+from django.http import HttpResponse
+from django.template import Context, RequestContext, Template
 
 
 def render_widget(request, **variables):
@@ -133,3 +136,32 @@ def test_refuses_a_page_views_setting_that_is_not_true_or_false(settings, rf):
         render_widget(rf.get("/"))
 
     assert str(refused.value) == "django-deacon: the DEACON_PAGE_VIEWS setting must be True or False."
+
+
+def nonce_in_header(response):
+    """The nonce the response's policy allows, or None when it allows none."""
+    found = re.search(r"'nonce-([^']+)'", response["Content-Security-Policy"])
+    return found.group(1) if found else None
+
+
+@pytest.mark.skipif(django.VERSION < (6, 0), reason="Django's own CSP support arrived in 6.0")
+def test_carries_the_nonce_from_djangos_own_content_security_policy(settings, rf):
+    from django.middleware.csp import ContentSecurityPolicyMiddleware
+    from django.template.context_processors import csp
+    from django.utils.csp import CSP
+
+    settings.DEACON_KEY = "pk_test123"
+    settings.SECURE_CSP = {"script-src": [CSP.SELF, CSP.NONCE]}
+
+    def view(request):
+        template = Template("{% load deacon %}{% deacon_widget %}")
+        return HttpResponse(template.render(RequestContext(request, processors=[csp])))
+
+    response = ContentSecurityPolicyMiddleware(view)(rf.get("/"))
+    nonce = nonce_in_header(response)
+
+    assert (nonce is not None, response.content.decode()) == (
+        True,
+        '<script src="https://heydeacon.com/widget/v1/loader.js" data-key="pk_test123" async '
+        f'nonce="{nonce}"></script>',
+    )

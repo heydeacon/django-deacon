@@ -44,7 +44,16 @@ def deacon_widget(context):
     if page_views is False:
         attributes["data-no-page-views"] = True
 
-    return loader_tag(attributes)
+    return loader_tag(attributes, csp_nonce(context))
+
+
+def csp_nonce(context):
+    """
+    The request's Content Security Policy nonce: from Django's own CSP support (6.0 and
+    later, through its csp context processor), or None when the project has no nonce.
+    """
+    nonce = context.get("csp_nonce")
+    return None if nonce is None else str(nonce)
 
 
 def check_context(deacon_context):
@@ -68,14 +77,16 @@ def check_page_views(page_views):
         )
 
 
-def loader_tag(attributes):
+def loader_tag(attributes, nonce):
     """
-    The tag Install gives, with any of its other attributes between the key and async. An
-    attribute that is True is written with no value, as async is.
+    The tag Install gives, with any of its other attributes between the key and async, and
+    the nonce after them. An attribute that is True is written with no value, as async is.
     """
     rendered = "".join(
         f" {name}" if value is True else f' {name}="{escape(value)}"'
         for name, value in attributes.items()
     )
 
-    return mark_safe(f'<script src="{LOADER_SRC}"{rendered} async></script>')
+    nonce_attribute = "" if nonce is None else f' nonce="{escape(nonce)}"'
+
+    return mark_safe(f'<script src="{LOADER_SRC}"{rendered} async{nonce_attribute}></script>')
