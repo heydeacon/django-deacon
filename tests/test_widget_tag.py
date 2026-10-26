@@ -2,6 +2,7 @@ import logging
 from html.parser import HTMLParser
 
 import pytest
+from django.core.exceptions import ImproperlyConfigured
 from django.template import Context, Template
 
 
@@ -89,4 +90,26 @@ def test_keeps_a_context_value_that_looks_like_html_as_it_was_written(settings, 
 
     assert script_attributes(render_widget(rf.get("/")))["data-context"] == (
         '{"note":"</script><b>\\"hi\\" &amp;</b>"}'
+    )
+
+
+@pytest.mark.parametrize(
+    "deacon_context",
+    [
+        pytest.param("plan=pro", id="a string"),
+        pytest.param(["docs"], id="a list"),
+        pytest.param({"plan": {"tier": "pro"}}, id="a dict with a nested value"),
+        pytest.param({"plan": None}, id="a dict with a None value"),
+    ],
+)
+def test_refuses_a_context_of_the_wrong_type(settings, rf, deacon_context):
+    settings.DEACON_KEY = "pk_test123"
+    settings.DEACON_CONTEXT = deacon_context
+
+    with pytest.raises(ImproperlyConfigured) as refused:
+        render_widget(rf.get("/"))
+
+    assert str(refused.value) == (
+        "django-deacon: the DEACON_CONTEXT setting must be a dict whose values are strings, "
+        "numbers or booleans."
     )

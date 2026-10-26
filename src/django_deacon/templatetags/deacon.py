@@ -3,6 +3,7 @@ import logging
 
 from django import template
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 from django.utils.html import escape
 from django.utils.safestring import mark_safe
 
@@ -31,6 +32,7 @@ def deacon_widget(context):
         return ""
 
     deacon_context = getattr(settings, "DEACON_CONTEXT", None)
+    check_context(deacon_context)
 
     attributes = {"data-key": key}
     if deacon_context is not None:
@@ -39,6 +41,20 @@ def deacon_widget(context):
         )
 
     return loader_tag(attributes)
+
+
+def check_context(deacon_context):
+    """A wrong type is a mistake in the project's settings, so it raises."""
+    if deacon_context is None:
+        return
+
+    if not isinstance(deacon_context, dict) or not all(
+        isinstance(value, str | int | float) for value in deacon_context.values()
+    ):
+        raise ImproperlyConfigured(
+            "django-deacon: the DEACON_CONTEXT setting must be a dict whose values are strings, "
+            "numbers or booleans."
+        )
 
 
 def loader_tag(attributes):
