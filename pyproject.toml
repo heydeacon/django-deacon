@@ -42,7 +42,11 @@ Repository = "https://github.com/heydeacon/django-deacon"
 Issues = "https://github.com/heydeacon/django-deacon/issues"
 
 [dependency-groups]
-dev = ["pytest>=9.1", "pytest-django>=4.14"]
+dev = [
+    "django-csp>=4.0",
+    "pytest>=9.1",
+    "pytest-django>=4.14",
+]
 
 [build-system]
 requires = ["uv_build>=0.13.5,<0.14"]
@@ -52,3 +56,6 @@ build-backend = "uv_build"
 DJANGO_SETTINGS_MODULE = "tests.settings"
 pythonpath = ["."]
 testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100

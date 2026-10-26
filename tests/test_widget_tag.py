@@ -4,9 +4,12 @@ from html.parser import HTMLParser
 
 import django
 import pytest
+from csp.constants import NONCE, SELF
+from csp.middleware import CSPMiddleware
 from django.core.exceptions import ImproperlyConfigured
 from django.http import HttpResponse
 from django.template import Context, RequestContext, Template
+from django.template.context_processors import request as request_processor
 
 
 def render_widget(request, **variables):
@@ -135,7 +138,9 @@ def test_refuses_a_page_views_setting_that_is_not_true_or_false(settings, rf):
     with pytest.raises(ImproperlyConfigured) as refused:
         render_widget(rf.get("/"))
 
-    assert str(refused.value) == "django-deacon: the DEACON_PAGE_VIEWS setting must be True or False."
+    assert (
+        str(refused.value) == "django-deacon: the DEACON_PAGE_VIEWS setting must be True or False."
+    )
 
 
 def nonce_in_header(response):
@@ -160,8 +165,30 @@ def test_carries_the_nonce_from_djangos_own_content_security_policy(settings, rf
     response = ContentSecurityPolicyMiddleware(view)(rf.get("/"))
     nonce = nonce_in_header(response)
 
-    assert (nonce is not None, response.content.decode()) == (
-        True,
+    tag = (
         '<script src="https://heydeacon.com/widget/v1/loader.js" data-key="pk_test123" async '
-        f'nonce="{nonce}"></script>',
+        f'nonce="{nonce}"></script>'
     )
+
+    assert (nonce is not None, response.content.decode()) == (True, tag)
+
+
+def test_carries_the_nonce_from_django_csp(settings, rf):
+    settings.DEACON_KEY = "pk_test123"
+    settings.CONTENT_SECURITY_POLICY = {"DIRECTIVES": {"script-src": [SELF, NONCE]}}
+
+    def view(request):
+        template = Template("{% load deacon %}{% deacon_widget %}")
+        return HttpResponse(
+            template.render(RequestContext(request, processors=[request_processor]))
+        )
+
+    response = CSPMiddleware(view)(rf.get("/"))
+    nonce = nonce_in_header(response)
+
+    tag = (
+        '<script src="https://heydeacon.com/widget/v1/loader.js" data-key="pk_test123" async '
+        f'nonce="{nonce}"></script>'
+    )
+
+    assert (nonce is not None, response.content.decode()) == (True, tag)

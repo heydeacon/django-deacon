@@ -50,9 +50,13 @@ def deacon_widget(context):
 def csp_nonce(context):
     """
     The request's Content Security Policy nonce: from Django's own CSP support (6.0 and
-    later, through its csp context processor), or None when the project has no nonce.
+    later, through its csp context processor), else from django-csp's request.csp_nonce, or
+    None when the project has no nonce.
     """
     nonce = context.get("csp_nonce")
+    if nonce is None:
+        nonce = getattr(context.get("request"), "csp_nonce", None)
+
     return None if nonce is None else str(nonce)
 
 
