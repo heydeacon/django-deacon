@@ -1,4 +1,5 @@
 import logging
+from html.parser import HTMLParser
 
 import pytest
 from django.template import Context, Template
@@ -8,6 +9,19 @@ def render_widget(request, **variables):
     """What a base template's {% deacon_widget %} prints for this request."""
     template = Template("{% load deacon %}{% deacon_widget %}")
     return template.render(Context({"request": request, **variables}))
+
+
+def script_attributes(html):
+    """The attributes of the first script tag in some HTML, as a browser reads them."""
+    found = []
+
+    class Parser(HTMLParser):
+        def handle_starttag(self, tag, attrs):
+            if tag == "script" and not found:
+                found.append(dict(attrs))
+
+    Parser().feed(html)
+    return found[0]
 
 
 def test_prints_the_tag_from_install_with_the_key_from_the_deacon_key_setting(settings, rf):
@@ -66,4 +80,13 @@ def test_passes_the_deacon_context_setting_to_deacon_as_the_data_context_attribu
         '<script src="https://heydeacon.com/widget/v1/loader.js" data-key="pk_test123" '
         'data-context="{&quot;site&quot;:&quot;docs&quot;,&quot;version&quot;:&quot;3.2&quot;,'
         '&quot;beta&quot;:true}" async></script>'
+    )
+
+
+def test_keeps_a_context_value_that_looks_like_html_as_it_was_written(settings, rf):
+    settings.DEACON_KEY = "pk_test123"
+    settings.DEACON_CONTEXT = {"note": '</script><b>"hi" &amp;</b>'}
+
+    assert script_attributes(render_widget(rf.get("/")))["data-context"] == (
+        '{"note":"</script><b>\\"hi\\" &amp;</b>"}'
     )
