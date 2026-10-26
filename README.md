@@ -39,11 +39,13 @@ Deacon only runs on the sites listed on Install. A listed domain covers its subd
 
 When you run `python manage.py runserver`, Install notices the widget on `127.0.0.1:8000` and lets you add it in one click. Chats on a development address don't count towards your plan.
 
+If you tell Deacon who is signed in, with the `window.deaconUser` script from [Deacon's install guide](https://heydeacon.com/agent/install.md), put that script above `{% deacon_widget %}` in the head, because the widget reads it as it starts.
+
 ## Options
 
 | Setting             | Type    | Default  | What it does |
 | ------------------- | ------- | -------- | ------------ |
-| `DEACON_KEY`        | str     | required | Your Deacon key. |
+| `DEACON_KEY`        | str     | none     | Your Deacon key. Without it the tag prints nothing and logs a warning. |
 | `DEACON_CONTEXT`    | dict    | none     | Details Deacon takes into account when it answers, the same on every page, such as `{"product": "api", "docs_version": "3.2"}`. Up to 12 keys, each value a string, number or boolean. Anyone can read them in the page's HTML, so never put a secret here. |
 | `DEACON_PAGE_VIEWS` | bool    | `True`   | The same script counts visits for Deacon's website analytics. Set this to `False` to send no page views or JavaScript errors from your site. Chat still works. |
 
@@ -55,16 +57,16 @@ DEACON_PAGE_VIEWS = False
 
 ## Content Security Policy
 
-If your site sends a Content Security Policy with a nonce, the tag carries the request's nonce, so `script-src` doesn't need Deacon's address. It reads the nonce from Django's own CSP support (Django 6.0 and later), which needs the `django.template.context_processors.csp` context processor, or from [django-csp](https://pypi.org/project/django-csp/)'s `request.csp_nonce`, which needs `django.template.context_processors.request`.
+If your site sends a Content Security Policy with a nonce, the tag carries the request's nonce. It reads it from Django's own CSP support (Django 6.0 and later), which needs the `django.template.context_processors.csp` context processor, or from [django-csp](https://pypi.org/project/django-csp/)'s `request.csp_nonce`, which needs `django.template.context_processors.request`.
 
-The chat still needs `https://heydeacon.com` in `connect-src` and `frame-src`, and `'unsafe-inline'` in `style-src`, because the widget writes its styles where a nonce can't reach. Keep the nonce out of `style-src`, since a nonce there makes browsers ignore `'unsafe-inline'`:
+The policy also needs Deacon's address, `https://heydeacon.com`, in `script-src`, `connect-src` and `frame-src`, and `'unsafe-inline'` in `style-src`, because the widget writes its styles where a nonce can't reach. Keep the nonce out of `style-src`, since a nonce there makes browsers ignore `'unsafe-inline'`:
 
 ```python
 from django.utils.csp import CSP
 
 SECURE_CSP = {
     "default-src": [CSP.SELF],
-    "script-src": [CSP.SELF, CSP.NONCE],
+    "script-src": [CSP.SELF, CSP.NONCE, "https://heydeacon.com"],
     "style-src": [CSP.SELF, CSP.UNSAFE_INLINE],
     "connect-src": [CSP.SELF, "https://heydeacon.com"],
     "frame-src": ["https://heydeacon.com"],
