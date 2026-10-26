@@ -56,3 +56,14 @@ def test_prints_nothing_and_logs_a_warning_when_the_key_is_missing(settings, rf,
         "",
         [("django_deacon", logging.WARNING, MISSING_KEY)],
     )
+
+
+def test_passes_the_deacon_context_setting_to_deacon_as_the_data_context_attribute(settings, rf):
+    settings.DEACON_KEY = "pk_test123"
+    settings.DEACON_CONTEXT = {"site": "docs", "version": "3.2", "beta": True}
+
+    assert render_widget(rf.get("/")) == (
+        '<script src="https://heydeacon.com/widget/v1/loader.js" data-key="pk_test123" '
+        'data-context="{&quot;site&quot;:&quot;docs&quot;,&quot;version&quot;:&quot;3.2&quot;,'
+        '&quot;beta&quot;:true}" async></script>'
+    )

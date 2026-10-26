@@ -1,3 +1,4 @@
+import json
 import logging
 
 from django import template
@@ -29,4 +30,19 @@ def deacon_widget(context):
         logger.warning(MISSING_KEY)
         return ""
 
-    return mark_safe(f'<script src="{LOADER_SRC}" data-key="{escape(key)}" async></script>')
+    deacon_context = getattr(settings, "DEACON_CONTEXT", None)
+
+    attributes = {"data-key": key}
+    if deacon_context is not None:
+        attributes["data-context"] = json.dumps(
+            deacon_context, separators=(",", ":"), ensure_ascii=False
+        )
+
+    return loader_tag(attributes)
+
+
+def loader_tag(attributes):
+    """The tag Install gives, with any of its other attributes between the key and async."""
+    rendered = "".join(f' {name}="{escape(value)}"' for name, value in attributes.items())
+
+    return mark_safe(f'<script src="{LOADER_SRC}"{rendered} async></script>')
