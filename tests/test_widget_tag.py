@@ -1,3 +1,6 @@
+import logging
+
+import pytest
 from django.template import Context, Template
 
 
@@ -22,4 +25,34 @@ def test_trims_spaces_pasted_around_the_key(settings, rf):
     assert render_widget(rf.get("/")) == (
         '<script src="https://heydeacon.com/widget/v1/loader.js" data-key="pk_test123" async>'
         "</script>"
+    )
+
+
+MISSING_KEY = (
+    "django-deacon: the DEACON_KEY setting is missing, so the page has no Deacon widget. In "
+    "Deacon, open Install (the button at the top of the dashboard) and copy the data-key value "
+    "from the snippet. It starts with pk_."
+)
+
+
+@pytest.mark.parametrize(
+    "key",
+    [
+        pytest.param(None, id="unset"),
+        pytest.param("", id="empty, as from an unset environment variable"),
+        pytest.param("   ", id="blank"),
+    ],
+)
+def test_prints_nothing_and_logs_a_warning_when_the_key_is_missing(settings, rf, caplog, key):
+    if key is None:
+        del settings.DEACON_KEY
+    else:
+        settings.DEACON_KEY = key
+
+    with caplog.at_level(logging.WARNING, logger="django_deacon"):
+        rendered = render_widget(rf.get("/"))
+
+    assert (rendered, caplog.record_tuples) == (
+        "",
+        [("django_deacon", logging.WARNING, MISSING_KEY)],
     )
