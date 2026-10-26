@@ -1,0 +1,54 @@
+[project]
+name = "django-deacon"
+version = "1.0.0"
+description = "Django app that adds Deacon, an AI support chat that answers from your docs, to every page."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Deacon", email = "hello@heydeacon.com" }]
+requires-python = ">=3.11"
+dependencies = ["Django>=5.2"]
+keywords = [
+    "django",
+    "deacon",
+    "chat widget",
+    "support",
+    "ai",
+    "chatbot",
+    "ai-chatbot",
+    "ask-ai",
+    "support-chat",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Web Environment",
+    "Framework :: Django",
+    "Framework :: Django :: 5.2",
+    "Framework :: Django :: 6.0",
+    "Framework :: Django :: 6.1",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
+
+[project.urls]
+Homepage = "https://heydeacon.com"
+Repository = "https://github.com/heydeacon/django-deacon"
+Issues = "https://github.com/heydeacon/django-deacon/issues"
+
+[dependency-groups]
+dev = ["pytest>=9.1", "pytest-django>=4.14"]
+
+[build-system]
+requires = ["uv_build>=0.13.5,<0.14"]
+build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "tests.settings"
+pythonpath = ["."]
+testpaths = ["tests"]
