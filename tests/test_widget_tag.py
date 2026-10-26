@@ -113,3 +113,13 @@ def test_refuses_a_context_of_the_wrong_type(settings, rf, deacon_context):
         "django-deacon: the DEACON_CONTEXT setting must be a dict whose values are strings, "
         "numbers or booleans."
     )
+
+
+def test_holds_back_page_views_with_the_data_no_page_views_attribute(settings, rf):
+    settings.DEACON_KEY = "pk_test123"
+    settings.DEACON_PAGE_VIEWS = False
+
+    assert render_widget(rf.get("/")) == (
+        '<script src="https://heydeacon.com/widget/v1/loader.js" data-key="pk_test123" '
+        "data-no-page-views async></script>"
+    )

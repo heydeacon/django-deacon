@@ -39,6 +39,8 @@ def deacon_widget(context):
         attributes["data-context"] = json.dumps(
             deacon_context, separators=(",", ":"), ensure_ascii=False
         )
+    if getattr(settings, "DEACON_PAGE_VIEWS", True) is False:
+        attributes["data-no-page-views"] = True
 
     return loader_tag(attributes)
 
@@ -58,7 +60,13 @@ def check_context(deacon_context):
 
 
 def loader_tag(attributes):
-    """The tag Install gives, with any of its other attributes between the key and async."""
-    rendered = "".join(f' {name}="{escape(value)}"' for name, value in attributes.items())
+    """
+    The tag Install gives, with any of its other attributes between the key and async. An
+    attribute that is True is written with no value, as async is.
+    """
+    rendered = "".join(
+        f" {name}" if value is True else f' {name}="{escape(value)}"'
+        for name, value in attributes.items()
+    )
 
     return mark_safe(f'<script src="{LOADER_SRC}"{rendered} async></script>')
