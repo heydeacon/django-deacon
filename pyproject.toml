@@ -46,6 +46,7 @@ dev = [
     "django-csp>=4.0",
     "pytest>=9.1",
     "pytest-django>=4.14",
+    "ruff>=0.17.2",
 ]
 
 [build-system]

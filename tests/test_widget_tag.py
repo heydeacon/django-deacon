@@ -12,10 +12,10 @@ from django.template import Context, RequestContext, Template
 from django.template.context_processors import request as request_processor
 
 
-def render_widget(request, **variables):
+def render_widget(request):
     """What a base template's {% deacon_widget %} prints for this request."""
     template = Template("{% load deacon %}{% deacon_widget %}")
-    return template.render(Context({"request": request, **variables}))
+    return template.render(Context({"request": request}))
 
 
 def script_attributes(html):
@@ -60,7 +60,7 @@ MISSING_KEY = (
     "key",
     [
         pytest.param(None, id="unset"),
-        pytest.param("", id="empty, as from an unset environment variable"),
+        pytest.param("", id="empty"),
         pytest.param("   ", id="blank"),
     ],
 )

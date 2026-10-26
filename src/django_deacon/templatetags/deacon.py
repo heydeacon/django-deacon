@@ -33,8 +33,8 @@ def deacon_widget(context):
 
     deacon_context = getattr(settings, "DEACON_CONTEXT", None)
     page_views = getattr(settings, "DEACON_PAGE_VIEWS", True)
-    check_context(deacon_context)
-    check_page_views(page_views)
+    _check_context(deacon_context)
+    _check_page_views(page_views)
 
     attributes = {"data-key": key}
     if deacon_context is not None:
@@ -44,10 +44,10 @@ def deacon_widget(context):
     if page_views is False:
         attributes["data-no-page-views"] = True
 
-    return loader_tag(attributes, csp_nonce(context))
+    return _loader_tag(attributes, _csp_nonce(context))
 
 
-def csp_nonce(context):
+def _csp_nonce(context):
     """
     The request's Content Security Policy nonce: from Django's own CSP support (6.0 and
     later, through its csp context processor), else from django-csp's request.csp_nonce, or
@@ -60,13 +60,13 @@ def csp_nonce(context):
     return None if nonce is None else str(nonce)
 
 
-def check_context(deacon_context):
+def _check_context(deacon_context):
     """A wrong type is a mistake in the project's settings, so it raises."""
     if deacon_context is None:
         return
 
     if not isinstance(deacon_context, dict) or not all(
-        isinstance(value, str | int | float) for value in deacon_context.values()
+        isinstance(value, str | int | float | bool) for value in deacon_context.values()
     ):
         raise ImproperlyConfigured(
             "django-deacon: the DEACON_CONTEXT setting must be a dict whose values are strings, "
@@ -74,14 +74,14 @@ def check_context(deacon_context):
         )
 
 
-def check_page_views(page_views):
+def _check_page_views(page_views):
     if not isinstance(page_views, bool):
         raise ImproperlyConfigured(
             "django-deacon: the DEACON_PAGE_VIEWS setting must be True or False."
         )
 
 
-def loader_tag(attributes, nonce):
+def _loader_tag(attributes, nonce):
     """
     The tag Install gives, with any of its other attributes between the key and async, and
     the nonce after them. An attribute that is True is written with no value, as async is.
