@@ -55,10 +55,10 @@ urlpatterns = [
 Then give it your secret in the `DEACON_SECRET` environment variable:
 
 ```sh
-DEACON_SECRET=dk_sec_your_secret
+DEACON_SECRET=deacon_identity_your_secret
 ```
 
-To make one, open Install in Deacon and use Make a secret under Verify who's signed in. You see it once. The key the app signs with is the whole string exactly as Install shows it, `dk_sec_` and all, not decoded or shortened. Keep it on the server: unlike the `pk_` key, anyone who has it can tell Deacon they are any of your users.
+To make one, open Install in Deacon and use Make a secret under Verify who's signed in. You see it once. The key the app signs with is the whole string exactly as Install shows it, `deacon_identity_` and all, not decoded or shortened. Keep it on the server: unlike the `pk_` key, anyone who has it can tell Deacon they are any of your users.
 
 With both in place, the app does the rest:
 

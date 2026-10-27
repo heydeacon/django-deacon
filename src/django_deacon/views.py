@@ -23,7 +23,7 @@ NONCE_FORMAT = re.compile(r"[A-Za-z0-9_-]{1,128}")
 MISSING_SECRET = (
     "django-deacon: DEACON_SECRET is missing, so the token route signs nobody and Deacon can't "
     "verify who is signed in. In Deacon, open Install (the button at the top of the dashboard) "
-    "and make a secret under Verify who's signed in. It starts with dk_sec_."
+    "and make a secret under Verify who's signed in. It starts with deacon_identity_."
 )
 
 
@@ -58,7 +58,7 @@ def token(request):
     if not request.user.is_authenticated:
         return HttpResponse(status=204)
 
-    # The key is the whole secret as Deacon showed it, dk_sec_ and all.
+    # The key is the whole secret as Deacon showed it, deacon_identity_ and all.
     secret = os.environ.get("DEACON_SECRET", "").strip()
 
     if secret == "":
