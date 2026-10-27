@@ -5,7 +5,6 @@ from types import SimpleNamespace
 
 import jwt
 import pytest
-from django.test import Client
 
 from django_deacon import views
 
@@ -16,19 +15,6 @@ NONCE = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
 
 # What the page's token function posts.
 BODY = json.dumps({"nonce": NONCE})
-
-
-@pytest.fixture
-def browser():
-    """A browser on the site, whose POSTs need the CSRF token, as a real one's do."""
-    return Client(enforce_csrf_checks=True)
-
-
-@pytest.fixture
-def ana(django_user_model):
-    return django_user_model.objects.create_user(
-        username="ana", email="ana@studio.com", first_name="Ana", last_name="Ruiz"
-    )
 
 
 @pytest.fixture(autouse=True)

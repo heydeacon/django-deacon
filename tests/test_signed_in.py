@@ -11,20 +11,6 @@ from django.core.exceptions import ImproperlyConfigured
 from django.http import HttpResponse
 from django.template import Context, RequestContext, Template
 from django.template.context_processors import request as request_processor
-from django.test import Client
-
-
-@pytest.fixture
-def browser():
-    """A browser on the site, whose POSTs need the CSRF token, as a real one's do."""
-    return Client(enforce_csrf_checks=True)
-
-
-@pytest.fixture
-def ana(django_user_model):
-    return django_user_model.objects.create_user(
-        username="ana", email="ana@studio.com", first_name="Ana", last_name="Ruiz"
-    )
 
 
 def without_csrf_token(html):
