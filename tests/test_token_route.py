@@ -81,3 +81,14 @@ def test_answers_with_a_token_deacon_accepts_hs256_with_deacon_secret_naming_who
         True,
         600,
     )
+
+
+@pytest.mark.django_db
+def test_answers_204_with_no_token_when_nobody_is_signed_in(browser, ana, settings):
+    browser.force_login(ana)
+    csrf = csrf_token_on(browser)
+    del browser.cookies[settings.SESSION_COOKIE_NAME]  # signed out since the page loaded
+
+    response = post_token(browser, csrf)
+
+    assert (response.status_code, response.content) == (204, b"")

@@ -20,6 +20,11 @@ def token(request):
     site's CSRF protection, as every other POST on the site does.
     """
     nonce = json.loads(request.body)["nonce"]
+
+    # AnonymousUser when nobody is signed in, which names nobody.
+    if not request.user.is_authenticated:
+        return HttpResponse(status=204)
+
     user = users.details(request.user)
     now = int(time.time())
     claims = {
