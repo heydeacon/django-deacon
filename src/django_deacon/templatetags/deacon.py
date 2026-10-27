@@ -55,13 +55,13 @@ def deacon_widget(context):
     if page_views is False:
         attributes["data-no-page-views"] = True
 
-    nonce = _csp_nonce(context)
-    script = _signed_in_script(context, nonce) if signed_in else ""
+    csp_nonce = _csp_nonce(context)
+    script = _signed_in_script(context, csp_nonce) if signed_in else ""
 
-    return mark_safe(script + _loader_tag(attributes, nonce))
+    return mark_safe(script + _loader_tag(attributes, csp_nonce))
 
 
-def _signed_in_script(context, nonce):
+def _signed_in_script(context, csp_nonce):
     """
     Who is signed in, for the loader to read as it starts, so it goes above the loader tag. The
     token function asks the site's own POST /deacon/token to sign them when the chat opens,
@@ -76,12 +76,12 @@ def _signed_in_script(context, nonce):
         return ""
 
     if not user.is_authenticated:
-        return _script("window.deaconUser = null; window.Deacon?.identify(null);", nonce)
+        return _script("window.deaconUser = null; window.Deacon?.identify(null);", csp_nonce)
 
     return _script(
         f"window.deaconUser = {_user_object(request, user)}; "
         "window.Deacon?.identify(window.deaconUser);",
-        nonce,
+        csp_nonce,
     )
 
 
@@ -128,10 +128,12 @@ def _js_object(values):
     return "{ " + ", ".join(f"{_js(name)}: {_js(value)}" for name, value in values.items()) + " }"
 
 
-def _script(code, nonce):
-    nonce_attribute = "" if nonce is None else f' nonce="{escape(nonce)}"'
+def _script(code, csp_nonce):
+    return f"<script{_nonce_attribute(csp_nonce)}>{code}</script>"
 
-    return f"<script{nonce_attribute}>{code}</script>"
+
+def _nonce_attribute(csp_nonce):
+    return "" if csp_nonce is None else f' nonce="{escape(csp_nonce)}"'
 
 
 def _csp_nonce(context):
@@ -166,7 +168,7 @@ def _check_bool(name, value):
         raise ImproperlyConfigured(f"django-deacon: the {name} setting must be True or False.")
 
 
-def _loader_tag(attributes, nonce):
+def _loader_tag(attributes, csp_nonce):
     """
     The tag Install gives, with any of its other attributes between the key and async, and
     the nonce after them. An attribute that is True is written with no value, as async is.
@@ -176,6 +178,6 @@ def _loader_tag(attributes, nonce):
         for name, value in attributes.items()
     )
 
-    nonce_attribute = "" if nonce is None else f' nonce="{escape(nonce)}"'
-
-    return mark_safe(f'<script src="{LOADER_SRC}"{rendered} async{nonce_attribute}></script>')
+    return mark_safe(
+        f'<script src="{LOADER_SRC}"{rendered} async{_nonce_attribute(csp_nonce)}></script>'
+    )

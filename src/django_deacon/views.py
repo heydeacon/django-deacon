@@ -18,7 +18,7 @@ LIFETIME = 10 * 60
 
 # The widget session's nonce, which the token carries so it proves who is signed in to that
 # session and no other. Deacon's are hex; anything far from that isn't one.
-NONCE = re.compile(r"[A-Za-z0-9_-]{1,128}")
+NONCE_FORMAT = re.compile(r"[A-Za-z0-9_-]{1,128}")
 
 MISSING_SECRET = (
     "django-deacon: DEACON_SECRET is missing, so the token route signs nobody and Deacon can't "
@@ -89,4 +89,4 @@ def _nonce(body):
     except (ValueError, AttributeError):
         return None
 
-    return nonce if isinstance(nonce, str) and NONCE.fullmatch(nonce) else None
+    return nonce if isinstance(nonce, str) and NONCE_FORMAT.fullmatch(nonce) else None
