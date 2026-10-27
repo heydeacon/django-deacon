@@ -1,6 +1,6 @@
 [project]
 name = "django-deacon"
-version = "1.0.0"
+version = "1.1.0"
 description = "Django app that adds Deacon, an AI support chat that answers from your docs, to every page."
 readme = "README.md"
 license = "MIT"
