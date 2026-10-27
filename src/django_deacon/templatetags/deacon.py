@@ -4,8 +4,12 @@ import logging
 from django import template
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
+from django.middleware.csrf import get_token
+from django.urls import reverse
 from django.utils.html import escape
 from django.utils.safestring import mark_safe
+
+from django_deacon import users
 
 register = template.Library()
 logger = logging.getLogger("django_deacon")
@@ -44,7 +48,69 @@ def deacon_widget(context):
     if page_views is False:
         attributes["data-no-page-views"] = True
 
-    return _loader_tag(attributes, _csp_nonce(context))
+    nonce = _csp_nonce(context)
+
+    return mark_safe(_signed_in_script(context, nonce) + _loader_tag(attributes, nonce))
+
+
+def _signed_in_script(context, nonce):
+    """
+    Who is signed in, for the loader to read as it starts, so it goes above the loader tag. The
+    token function asks the site's own POST /deacon/token to sign them when the chat opens,
+    sending the CSRF token as every other POST on the site does.
+    """
+    request = getattr(context, "request", None) or context.get("request")
+    user = getattr(request, "user", None)
+
+    if user is None or not user.is_authenticated:
+        return ""
+
+    return _script(
+        f"window.deaconUser = {_user_object(request, user)}; "
+        "window.Deacon?.identify(window.deaconUser);",
+        nonce,
+    )
+
+
+def _user_object(request, user):
+    """
+    The user's id, email and name, and the token function: written as code rather than JSON,
+    since a function has no JSON.
+    """
+    csrf_header = settings.CSRF_HEADER_NAME.removeprefix("HTTP_").replace("_", "-")
+    headers = {"Content-Type": "application/json", csrf_header: get_token(request)}
+
+    token = (
+        "(nonce) => fetch("
+        + _js(reverse("django_deacon:token"))
+        + ', { method: "POST", credentials: "same-origin", headers: '
+        + _js_object(headers)
+        + ', body: JSON.stringify({ nonce }) }).then((r) => (r.status === 200 ? r.text() : ""))'
+    )
+    fields = [
+        f"{name}: {_js(value)}" for name, value in users.details(user).items() if value is not None
+    ]
+
+    return "{ " + ", ".join([*fields, f"token: {token}"]) + " }"
+
+
+# What a string can't hold inside a script without ending it or starting markup.
+_SCRIPT_ESCAPES = {ord("<"): "\\u003C", ord(">"): "\\u003E", ord("&"): "\\u0026"}
+
+
+def _js(value):
+    """A string as JavaScript, escaped so nothing in it can end the script it sits in."""
+    return json.dumps(str(value)).translate(_SCRIPT_ESCAPES)
+
+
+def _js_object(values):
+    return "{ " + ", ".join(f"{_js(name)}: {_js(value)}" for name, value in values.items()) + " }"
+
+
+def _script(code, nonce):
+    nonce_attribute = "" if nonce is None else f' nonce="{escape(nonce)}"'
+
+    return f"<script{nonce_attribute}>{code}</script>"
 
 
 def _csp_nonce(context):
