@@ -5,7 +5,7 @@ from django import template
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.middleware.csrf import get_token
-from django.urls import reverse
+from django.urls import NoReverseMatch, reverse
 from django.utils.html import escape
 from django.utils.safestring import mark_safe
 
@@ -20,6 +20,11 @@ MISSING_KEY = (
     "django-deacon: the DEACON_KEY setting is missing, so the page has no Deacon widget. In "
     "Deacon, open Install (the button at the top of the dashboard) and copy the data-key value "
     "from the snippet. It starts with pk_."
+)
+
+MISSING_URLS = (
+    "django-deacon: the token route isn't in your URLs, so Deacon can't verify who is signed "
+    'in. Add path("", include("django_deacon.urls")) to urlpatterns in your urls.py.'
 )
 
 
@@ -83,21 +88,29 @@ def _signed_in_script(context, nonce):
 def _user_object(request, user):
     """
     The user's id, email and name, and the token function: written as code rather than JSON,
-    since a function has no JSON.
+    since a function has no JSON. A site that hasn't included django_deacon.urls has no route
+    for the function to call, so it names the user without one and logs a warning.
     """
+    fields = [
+        f"{name}: {_js(value)}" for name, value in users.details(user).items() if value is not None
+    ]
+
+    try:
+        path = reverse("django_deacon:token")
+    except NoReverseMatch:
+        logger.warning(MISSING_URLS)
+        return "{ " + ", ".join(fields) + " }"
+
     csrf_header = settings.CSRF_HEADER_NAME.removeprefix("HTTP_").replace("_", "-")
     headers = {"Content-Type": "application/json", csrf_header: get_token(request)}
 
     token = (
         "(nonce) => fetch("
-        + _js(reverse("django_deacon:token"))
+        + _js(path)
         + ', { method: "POST", credentials: "same-origin", headers: '
         + _js_object(headers)
         + ', body: JSON.stringify({ nonce }) }).then((r) => (r.status === 200 ? r.text() : ""))'
     )
-    fields = [
-        f"{name}: {_js(value)}" for name, value in users.details(user).items() if value is not None
-    ]
 
     return "{ " + ", ".join([*fields, f"token: {token}"]) + " }"
 

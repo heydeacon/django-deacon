@@ -1,3 +1,4 @@
+import logging
 import re
 
 import pytest
@@ -92,4 +93,34 @@ def test_refuses_a_deacon_signed_in_setting_that_is_not_true_or_false(settings, 
 
     assert (
         str(refused.value) == "django-deacon: the DEACON_SIGNED_IN setting must be True or False."
+    )
+
+
+MISSING_URLS = (
+    "django-deacon: the token route isn't in your URLs, so Deacon can't verify who is signed "
+    'in. Add path("", include("django_deacon.urls")) to urlpatterns in your urls.py.'
+)
+
+
+@pytest.mark.django_db
+def test_names_the_user_without_a_token_and_logs_a_warning_when_the_urls_are_not_included(
+    settings, browser, ana, caplog
+):
+    settings.DEACON_KEY = "pk_test123"
+    settings.ROOT_URLCONF = "tests.urls_without_deacon"
+    browser.force_login(ana)
+
+    with caplog.at_level(logging.WARNING, logger="django_deacon"):
+        page = browser.get("/account").content.decode()
+
+    named = (
+        f'<script>window.deaconUser = {{ id: "{ana.pk}", email: "ana@studio.com", '
+        'name: "Ana Ruiz" }; window.Deacon?.identify(window.deaconUser);</script>'
+        '<script src="https://heydeacon.com/widget/v1/loader.js" data-key="pk_test123" async>'
+        "</script>"
+    )
+
+    assert (page, caplog.record_tuples) == (
+        named,
+        [("django_deacon", logging.WARNING, MISSING_URLS)],
     )
