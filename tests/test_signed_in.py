@@ -1,6 +1,7 @@
 import re
 
 import pytest
+from django.core.exceptions import ImproperlyConfigured
 from django.template import Context, Template
 from django.test import Client
 
@@ -60,4 +61,35 @@ def test_says_nothing_about_who_is_signed_in_when_the_request_has_no_user(settin
     assert template.render(Context({"request": rf.get("/")})) == (
         '<script src="https://heydeacon.com/widget/v1/loader.js" data-key="pk_test123" async>'
         "</script>"
+    )
+
+
+@pytest.mark.parametrize(
+    "signed_in", [pytest.param(True, id="someone"), pytest.param(False, id="nobody")]
+)
+@pytest.mark.django_db
+def test_says_nothing_about_who_is_signed_in_when_deacon_signed_in_is_false(
+    settings, browser, ana, signed_in
+):
+    settings.DEACON_KEY = "pk_test123"
+    settings.DEACON_SIGNED_IN = False
+    if signed_in:
+        browser.force_login(ana)
+
+    assert browser.get("/account").content.decode() == (
+        '<script src="https://heydeacon.com/widget/v1/loader.js" data-key="pk_test123" async>'
+        "</script>"
+    )
+
+
+@pytest.mark.django_db
+def test_refuses_a_deacon_signed_in_setting_that_is_not_true_or_false(settings, browser):
+    settings.DEACON_KEY = "pk_test123"
+    settings.DEACON_SIGNED_IN = "false"
+
+    with pytest.raises(ImproperlyConfigured) as refused:
+        browser.get("/account")
+
+    assert (
+        str(refused.value) == "django-deacon: the DEACON_SIGNED_IN setting must be True or False."
     )

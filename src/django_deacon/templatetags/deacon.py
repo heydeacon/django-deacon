@@ -37,8 +37,10 @@ def deacon_widget(context):
 
     deacon_context = getattr(settings, "DEACON_CONTEXT", None)
     page_views = getattr(settings, "DEACON_PAGE_VIEWS", True)
+    signed_in = getattr(settings, "DEACON_SIGNED_IN", True)
     _check_context(deacon_context)
-    _check_page_views(page_views)
+    _check_bool("DEACON_PAGE_VIEWS", page_views)
+    _check_bool("DEACON_SIGNED_IN", signed_in)
 
     attributes = {"data-key": key}
     if deacon_context is not None:
@@ -49,8 +51,9 @@ def deacon_widget(context):
         attributes["data-no-page-views"] = True
 
     nonce = _csp_nonce(context)
+    script = _signed_in_script(context, nonce) if signed_in else ""
 
-    return mark_safe(_signed_in_script(context, nonce) + _loader_tag(attributes, nonce))
+    return mark_safe(script + _loader_tag(attributes, nonce))
 
 
 def _signed_in_script(context, nonce):
@@ -145,11 +148,9 @@ def _check_context(deacon_context):
         )
 
 
-def _check_page_views(page_views):
-    if not isinstance(page_views, bool):
-        raise ImproperlyConfigured(
-            "django-deacon: the DEACON_PAGE_VIEWS setting must be True or False."
-        )
+def _check_bool(name, value):
+    if not isinstance(value, bool):
+        raise ImproperlyConfigured(f"django-deacon: the {name} setting must be True or False.")
 
 
 def _loader_tag(attributes, nonce):
