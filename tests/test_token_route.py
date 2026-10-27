@@ -160,12 +160,30 @@ def test_sends_no_cors_headers_so_only_the_sites_own_pages_can_read_a_token(brow
 
 
 @pytest.mark.django_db
-def test_refuses_a_request_without_the_pages_csrf_token_as_the_site_refuses_any_post(
-    browser, ana
-):
+def test_refuses_a_request_without_the_pages_csrf_token_as_the_site_refuses_any_post(browser, ana):
     browser.force_login(ana)
     browser.get("/account")
 
     response = browser.post("/deacon/token", BODY, content_type="application/json")
 
     assert response.status_code == 403
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        pytest.param("{}", id="missing"),
+        pytest.param(json.dumps({"nonce": 42}), id="not a string"),
+        pytest.param(json.dumps({"nonce": "a" * 129}), id="longer than 128 characters"),
+        pytest.param(json.dumps({"nonce": "abc def"}), id="more than letters, digits, - and _"),
+        pytest.param("nonce=abc", id="in a body that isn't JSON"),
+        pytest.param(json.dumps([NONCE]), id="in JSON that isn't an object"),
+    ],
+)
+@pytest.mark.django_db
+def test_answers_400_with_no_token_when_the_nonce_is_wrong(browser, ana, body):
+    browser.force_login(ana)
+
+    response = ask_for_token(browser, body)
+
+    assert (response.status_code, response.content) == (400, b"")

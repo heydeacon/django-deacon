@@ -1,11 +1,12 @@
 import json
 import logging
 import os
+import re
 import time
 from functools import wraps
 
 import jwt
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseBadRequest
 from django.views.decorators.http import require_POST
 
 from django_deacon import users
@@ -14,6 +15,10 @@ logger = logging.getLogger("django_deacon")
 
 # How long a token lasts. Deacon refuses one that lasts more than 15 minutes.
 LIFETIME = 10 * 60
+
+# The widget session's nonce, which the token carries so it proves who is signed in to that
+# session and no other. Deacon's are hex; anything far from that isn't one.
+NONCE = re.compile(r"[A-Za-z0-9_-]{1,128}")
 
 MISSING_SECRET = (
     "django-deacon: DEACON_SECRET is missing, so the token route signs nobody and Deacon can't "
@@ -45,7 +50,9 @@ def token(request):
     saying who is signed in, signed with DEACON_SECRET, for Deacon to check. It sits behind the
     site's CSRF protection, as every other POST on the site does.
     """
-    nonce = json.loads(request.body)["nonce"]
+    nonce = _nonce(request.body)
+    if nonce is None:
+        return HttpResponseBadRequest()
 
     # AnonymousUser when nobody is signed in, which names nobody.
     if not request.user.is_authenticated:
@@ -72,3 +79,13 @@ def token(request):
     signed = jwt.encode(claims, secret, algorithm="HS256")
 
     return HttpResponse(signed, content_type="text/plain; charset=utf-8")
+
+
+def _nonce(body):
+    """The nonce in the page's JSON body, or None when the body has none Deacon could have made."""
+    try:
+        nonce = json.loads(body).get("nonce")
+    except (ValueError, AttributeError):
+        return None
+
+    return nonce if isinstance(nonce, str) and NONCE.fullmatch(nonce) else None
