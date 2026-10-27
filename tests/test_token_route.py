@@ -128,3 +128,22 @@ def test_answers_204_and_logs_a_warning_when_deacon_secret_is_missing(
         b"",
         [("django_deacon", logging.WARNING, MISSING_SECRET)],
     )
+
+
+@pytest.mark.parametrize(
+    ("signed_in", "status"),
+    [pytest.param(True, 200, id="a token"), pytest.param(False, 204, id="no token")],
+)
+@pytest.mark.django_db
+def test_tells_caches_never_to_keep_its_answer(browser, ana, settings, signed_in, status):
+    browser.force_login(ana)
+    csrf = csrf_token_on(browser)
+    if not signed_in:
+        del browser.cookies[settings.SESSION_COOKIE_NAME]
+
+    response = post_token(browser, csrf)
+
+    assert (response.status_code, response.headers.get("Cache-Control")) == (
+        status,
+        "no-store, private",
+    )

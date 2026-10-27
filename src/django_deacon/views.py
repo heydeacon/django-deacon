@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import time
+from functools import wraps
 
 import jwt
 from django.http import HttpResponse
@@ -21,6 +22,22 @@ MISSING_SECRET = (
 )
 
 
+def _never_stored(view):
+    """
+    A token names one person, so no cache in front of the site may keep one for another: every
+    answer the view gives says so.
+    """
+
+    @wraps(view)
+    def answer(request, *args, **kwargs):
+        response = view(request, *args, **kwargs)
+        response["Cache-Control"] = "no-store, private"
+        return response
+
+    return answer
+
+
+@_never_stored
 @require_POST
 def token(request):
     """
