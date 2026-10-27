@@ -57,13 +57,18 @@ def _signed_in_script(context, nonce):
     """
     Who is signed in, for the loader to read as it starts, so it goes above the loader tag. The
     token function asks the site's own POST /deacon/token to sign them when the chat opens,
-    sending the CSRF token as every other POST on the site does.
+    sending the CSRF token as every other POST on the site does. With nobody signed in it signs
+    the visitor out, so a sign-out ends Deacon's proof of who they were. A request with no user
+    to ask, without Django's AuthenticationMiddleware, gets neither.
     """
     request = getattr(context, "request", None) or context.get("request")
     user = getattr(request, "user", None)
 
-    if user is None or not user.is_authenticated:
+    if user is None:
         return ""
+
+    if not user.is_authenticated:
+        return _script("window.deaconUser = null; window.Deacon?.identify(null);", nonce)
 
     return _script(
         f"window.deaconUser = {_user_object(request, user)}; "

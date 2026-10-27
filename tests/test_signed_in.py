@@ -1,6 +1,7 @@
 import re
 
 import pytest
+from django.template import Context, Template
 from django.test import Client
 
 
@@ -36,6 +37,27 @@ def test_tells_deacon_who_is_signed_in_with_a_token_function_above_the_loader_ta
         '"X-CSRFTOKEN": "CSRF" }, body: JSON.stringify({ nonce }) })'
         '.then((r) => (r.status === 200 ? r.text() : "")) }; '
         "window.Deacon?.identify(window.deaconUser);</script>"
+        '<script src="https://heydeacon.com/widget/v1/loader.js" data-key="pk_test123" async>'
+        "</script>"
+    )
+
+
+@pytest.mark.django_db
+def test_signs_the_visitor_out_of_deacon_when_nobody_is_signed_in(settings, browser):
+    settings.DEACON_KEY = "pk_test123"
+
+    assert browser.get("/account").content.decode() == (
+        "<script>window.deaconUser = null; window.Deacon?.identify(null);</script>"
+        '<script src="https://heydeacon.com/widget/v1/loader.js" data-key="pk_test123" async>'
+        "</script>"
+    )
+
+
+def test_says_nothing_about_who_is_signed_in_when_the_request_has_no_user(settings, rf):
+    settings.DEACON_KEY = "pk_test123"
+    template = Template("{% load deacon %}{% deacon_widget %}")
+
+    assert template.render(Context({"request": rf.get("/")})) == (
         '<script src="https://heydeacon.com/widget/v1/loader.js" data-key="pk_test123" async>'
         "</script>"
     )
