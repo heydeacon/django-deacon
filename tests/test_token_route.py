@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 import time
 
@@ -92,3 +93,38 @@ def test_answers_204_with_no_token_when_nobody_is_signed_in(browser, ana, settin
     response = post_token(browser, csrf)
 
     assert (response.status_code, response.content) == (204, b"")
+
+
+MISSING_SECRET = (
+    "django-deacon: DEACON_SECRET is missing, so the token route signs nobody and Deacon can't "
+    "verify who is signed in. In Deacon, open Install (the button at the top of the dashboard) "
+    "and make a secret under Verify who's signed in. It starts with dk_sec_."
+)
+
+
+@pytest.mark.parametrize(
+    "secret",
+    [
+        pytest.param(None, id="unset"),
+        pytest.param("", id="empty"),
+        pytest.param("   ", id="blank"),
+    ],
+)
+@pytest.mark.django_db
+def test_answers_204_and_logs_a_warning_when_deacon_secret_is_missing(
+    browser, ana, monkeypatch, caplog, secret
+):
+    if secret is None:
+        monkeypatch.delenv("DEACON_SECRET")
+    else:
+        monkeypatch.setenv("DEACON_SECRET", secret)
+    browser.force_login(ana)
+
+    with caplog.at_level(logging.WARNING, logger="django_deacon"):
+        response = ask_for_token(browser)
+
+    assert (response.status_code, response.content, caplog.record_tuples) == (
+        204,
+        b"",
+        [("django_deacon", logging.WARNING, MISSING_SECRET)],
+    )

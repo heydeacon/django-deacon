@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import time
 
@@ -8,8 +9,16 @@ from django.views.decorators.http import require_POST
 
 from django_deacon import users
 
+logger = logging.getLogger("django_deacon")
+
 # How long a token lasts. Deacon refuses one that lasts more than 15 minutes.
 LIFETIME = 10 * 60
+
+MISSING_SECRET = (
+    "django-deacon: DEACON_SECRET is missing, so the token route signs nobody and Deacon can't "
+    "verify who is signed in. In Deacon, open Install (the button at the top of the dashboard) "
+    "and make a secret under Verify who's signed in. It starts with dk_sec_."
+)
 
 
 @require_POST
@@ -25,6 +34,13 @@ def token(request):
     if not request.user.is_authenticated:
         return HttpResponse(status=204)
 
+    # The key is the whole secret as Deacon showed it, dk_sec_ and all.
+    secret = os.environ.get("DEACON_SECRET", "").strip()
+
+    if secret == "":
+        logger.warning(MISSING_SECRET)
+        return HttpResponse(status=204)
+
     user = users.details(request.user)
     now = int(time.time())
     claims = {
@@ -36,7 +52,6 @@ def token(request):
         "exp": now + LIFETIME,
     }
 
-    # The key is the whole secret as Deacon showed it, dk_sec_ and all.
-    signed = jwt.encode(claims, os.environ["DEACON_SECRET"], algorithm="HS256")
+    signed = jwt.encode(claims, secret, algorithm="HS256")
 
     return HttpResponse(signed, content_type="text/plain; charset=utf-8")
