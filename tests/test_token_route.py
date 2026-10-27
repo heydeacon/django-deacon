@@ -1,11 +1,13 @@
 import json
 import logging
 import re
-import time
+from types import SimpleNamespace
 
 import jwt
 import pytest
 from django.test import Client
+
+from django_deacon import views
 
 SECRET = "dk_sec_Wf3pX9qLr2Tz8vNc4bJh6yKd1sMa7eGu0oPiQwErTyU"
 
@@ -54,33 +56,35 @@ def ask_for_token(browser, body=BODY):
 
 @pytest.mark.django_db
 def test_answers_with_a_token_deacon_accepts_hs256_with_deacon_secret_naming_who_is_signed_in(
-    browser, ana
+    browser, ana, monkeypatch
 ):
+    # The view's clock, stopped at 12:00 UTC on 27 October 2026.
+    monkeypatch.setattr(views, "time", SimpleNamespace(time=lambda: 1_793_102_400))
     browser.force_login(ana)
 
-    before = int(time.time())
     response = ask_for_token(browser)
-    after = int(time.time())
 
     token = response.content.decode()
-    claims = jwt.decode(token, SECRET, algorithms=["HS256"])
-    iat = claims.pop("iat")
-    exp = claims.pop("exp")
+    # That moment has passed, so exp is checked against the value below rather than the clock.
+    claims = jwt.decode(token, SECRET, algorithms=["HS256"], options={"verify_exp": False})
 
     assert (
         response.status_code,
         response["Content-Type"],
         jwt.get_unverified_header(token)["alg"],
         claims,
-        before <= iat <= after,
-        exp - iat,
     ) == (
         200,
         "text/plain; charset=utf-8",
         "HS256",
-        {"sub": str(ana.pk), "email": "ana@studio.com", "name": "Ana Ruiz", "nonce": NONCE},
-        True,
-        600,
+        {
+            "sub": str(ana.pk),
+            "email": "ana@studio.com",
+            "name": "Ana Ruiz",
+            "nonce": NONCE,
+            "iat": 1_793_102_400,
+            "exp": 1_793_103_000,
+        },
     )
 
 
