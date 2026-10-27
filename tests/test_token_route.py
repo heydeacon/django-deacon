@@ -147,3 +147,25 @@ def test_tells_caches_never_to_keep_its_answer(browser, ana, settings, signed_in
         status,
         "no-store, private",
     )
+
+
+@pytest.mark.django_db
+def test_sends_no_cors_headers_so_only_the_sites_own_pages_can_read_a_token(browser, ana):
+    browser.force_login(ana)
+
+    response = ask_for_token(browser)
+
+    cors = [name for name in response.headers if name.lower().startswith("access-control-")]
+    assert (response.status_code, cors) == (200, [])
+
+
+@pytest.mark.django_db
+def test_refuses_a_request_without_the_pages_csrf_token_as_the_site_refuses_any_post(
+    browser, ana
+):
+    browser.force_login(ana)
+    browser.get("/account")
+
+    response = browser.post("/deacon/token", BODY, content_type="application/json")
+
+    assert response.status_code == 403
