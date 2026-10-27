@@ -187,3 +187,17 @@ def test_answers_400_with_no_token_when_the_nonce_is_wrong(browser, ana, body):
     response = ask_for_token(browser, body)
 
     assert (response.status_code, response.content) == (400, b"")
+
+
+@pytest.mark.django_db
+def test_signs_only_the_details_the_user_has(browser, django_user_model):
+    bo = django_user_model.objects.create_user(username="bo")
+    browser.force_login(bo)
+
+    response = ask_for_token(browser)
+
+    claims = jwt.decode(response.content, SECRET, algorithms=["HS256"])
+    assert {name: claims[name] for name in claims if name not in ("iat", "exp")} == {
+        "sub": str(bo.pk),
+        "nonce": NONCE,
+    }

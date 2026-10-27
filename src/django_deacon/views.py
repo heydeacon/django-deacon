@@ -76,7 +76,8 @@ def token(request):
         "exp": now + LIFETIME,
     }
 
-    signed = jwt.encode(claims, secret, algorithm="HS256")
+    known = {name: value for name, value in claims.items() if value is not None}
+    signed = jwt.encode(known, secret, algorithm="HS256")
 
     return HttpResponse(signed, content_type="text/plain; charset=utf-8")
 
