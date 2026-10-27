@@ -30,7 +30,9 @@ def test_tells_deacon_who_is_signed_in_with_a_token_function_above_the_loader_ta
         'name: "Ana Ruiz", token: (nonce) => fetch("/deacon/token", { method: "POST", '
         'credentials: "same-origin", headers: { "Content-Type": "application/json", '
         '"X-CSRFTOKEN": "CSRF" }, body: JSON.stringify({ nonce }) })'
-        '.then((r) => (r.status === 200 ? r.text() : "")) }; '
+        '.then((r) => { if (r.status === 204) return ""; '
+        'if (!r.ok) throw new Error("Deacon token route answered " + r.status); '
+        "return r.text(); }) }; "
         "window.Deacon?.identify(window.deaconUser);</script>"
         '<script src="https://heydeacon.com/widget/v1/loader.js" data-key="pk_test123" async>'
         "</script>"

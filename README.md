@@ -63,7 +63,7 @@ To make one, open Install in Deacon and use Make a secret under Verify who's sig
 With both in place, the app does the rest:
 
 - Above the widget's tag it prints `window.deaconUser`, with the user's id, email and name and a `token` function.
-- When the chat opens, `token` posts to `/deacon/token`, the view the URLs add. It answers with a token signed with `DEACON_SECRET` that names the user and this chat and lasts 10 minutes. With nobody signed in, or no secret, it answers 204 and signs nothing. Its answers are never cached and carry no CORS headers, so only your own pages can read them.
+- When the chat opens, `token` posts to `/deacon/token`, the view the URLs add. It answers with a token signed with `DEACON_SECRET` that names the user and this chat and lasts 10 minutes. With nobody signed in, or no secret, it answers 204 and signs nothing. Any other failure, such as a 404 or a 500, makes `token` throw, so Deacon can tell you the route is broken rather than take it for a sign-out. Its answers are never cached and carry no CORS headers, so only your own pages can read them.
 - On a page where nobody is signed in, it prints `window.deaconUser = null` and `Deacon.identify(null)` instead, so signing out ends what Deacon knew about the last person, and the next person on that computer starts fresh.
 
 The user is `request.user`, from Django's `AuthenticationMiddleware`, and the tag finds the request in the template's context, as it is when a view renders with `render()`. Anyone whose `is_authenticated` is false counts as nobody. The id is the user's primary key, so it must name one person across your whole site. The email is the user model's email field, and the name is `get_full_name()`, when the user has them. Without the URLs, the tag still names the user, with no `token` function, and logs a warning that says what to add.
@@ -146,7 +146,11 @@ It loads in the background without holding up the page. Above it, when someone i
       credentials: "same-origin",
       headers: { "Content-Type": "application/json", "X-CSRFTOKEN": "…" },
       body: JSON.stringify({ nonce }),
-    }).then((r) => (r.status === 200 ? r.text() : "")),
+    }).then((r) => {
+      if (r.status === 204) return "";
+      if (!r.ok) throw new Error("Deacon token route answered " + r.status);
+      return r.text();
+    }),
   };
   window.Deacon?.identify(window.deaconUser);
 </script>

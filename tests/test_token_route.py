@@ -85,6 +85,15 @@ def test_answers_204_with_no_token_when_nobody_is_signed_in(browser, ana, settin
     assert (response.status_code, response.content) == (204, b"")
 
 
+def test_answers_204_with_no_token_when_the_user_has_no_id(rf, django_user_model):
+    request = rf.post("/deacon/token", BODY, content_type="application/json")
+    request.user = django_user_model(username="ghost")  # never saved, so it has no id
+
+    response = views.token(request)
+
+    assert (response.status_code, response.content) == (204, b"")
+
+
 MISSING_SECRET = (
     "django-deacon: DEACON_SECRET is missing, so the token route signs nobody and Deacon can't "
     "verify who is signed in. In Deacon, open Install (the button at the top of the dashboard) "

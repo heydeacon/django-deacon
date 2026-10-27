@@ -54,8 +54,9 @@ def token(request):
     if nonce is None:
         return HttpResponseBadRequest()
 
-    # AnonymousUser when nobody is signed in, which names nobody.
-    if not request.user.is_authenticated:
+    # Nobody when the user is AnonymousUser or has no id to sign.
+    user = users.details(request.user)
+    if user is None:
         return HttpResponse(status=204)
 
     # The key is the whole secret as Deacon showed it, deacon_identity_ and all.
@@ -65,7 +66,6 @@ def token(request):
         logger.warning(MISSING_SECRET)
         return HttpResponse(status=204)
 
-    user = users.details(request.user)
     now = int(time.time())
     claims = {
         "sub": user["id"],

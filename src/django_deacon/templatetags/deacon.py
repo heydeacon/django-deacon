@@ -75,25 +75,27 @@ def _signed_in_script(context, csp_nonce):
     if user is None:
         return ""
 
-    if not user.is_authenticated:
+    signed_in = users.details(user)
+
+    if signed_in is None:
         return _script("window.deaconUser = null; window.Deacon?.identify(null);", csp_nonce)
 
     return _script(
-        f"window.deaconUser = {_user_object(request, user)}; "
+        f"window.deaconUser = {_user_object(request, signed_in)}; "
         "window.Deacon?.identify(window.deaconUser);",
         csp_nonce,
     )
 
 
-def _user_object(request, user):
+def _user_object(request, signed_in):
     """
     The user's id, email and name, and the token function: written as code rather than JSON,
-    since a function has no JSON. A site that hasn't included django_deacon.urls has no route
-    for the function to call, so it names the user without one and logs a warning.
+    since a function has no JSON. A 204 is nobody signed in. Any other failure throws, so Deacon
+    can tell the founder the route is broken instead of taking it for a sign-out. A site that
+    hasn't included django_deacon.urls has no route for the function to call, so it names the
+    user without one and logs a warning.
     """
-    fields = [
-        f"{name}: {_js(value)}" for name, value in users.details(user).items() if value is not None
-    ]
+    fields = [f"{name}: {_js(value)}" for name, value in signed_in.items() if value is not None]
 
     try:
         path = reverse("django_deacon:token")
@@ -109,7 +111,10 @@ def _user_object(request, user):
         + _js(path)
         + ', { method: "POST", credentials: "same-origin", headers: '
         + _js_object(headers)
-        + ', body: JSON.stringify({ nonce }) }).then((r) => (r.status === 200 ? r.text() : ""))'
+        + ", body: JSON.stringify({ nonce }) })"
+        + '.then((r) => { if (r.status === 204) return ""; '
+        + 'if (!r.ok) throw new Error("Deacon token route answered " + r.status); '
+        + "return r.text(); })"
     )
 
     return "{ " + ", ".join([*fields, f"token: {token}"]) + " }"
